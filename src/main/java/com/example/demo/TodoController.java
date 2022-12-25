@@ -5,24 +5,41 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("test")
+@RequestMapping("todo")
 public class TodoController {
-    @GetMapping("/RequestParam")
-    public String testController(@RequestBody TestRequestBodyDto testRequestBodyDto){
-        return "Hello world ID : " + testRequestBodyDto.getId() + "Message : " + testRequestBodyDto.getMessage();
+
+    private final TodoService service;
+
+    public TodoController(TodoService service) {
+        this.service = service;
     }
-    @GetMapping("/ResponseBody")
-    public ResponseDto<String> testRes(){
-        List<String> list = new ArrayList<>();
-        list.add("Hello World I'm ResponseDTO");
-        ResponseDto<String> response = ResponseDto.<String>builder().data(list).build();
-        return response;
-    }
-    @GetMapping
-    public ResponseEntity<?> retrieveTodoList(){
-        String temporaryUserId = "temporary-user";
-        List<TodoEntity> entities = service.retrive(temporaryUserId);
+    @PostMapping
+    public ResponseEntity<?> createTodo(@RequestBody TodoDto dto){
+        try {
+            String temporaryUserId = "temporary-user";
+
+            TodoEntity entity = TodoDto.toEntity(dto);
+
+            entity.setId(null);
+
+            entity.setUserId(null);
+
+            List<TodoEntity> entities = service.create(entity);
+
+            List<TodoDto> dtos = entities.stream().map(TodoDto::new).collect(Collectors.toList());
+
+            // 변환된 TodoDto 리스트를 이용해 ResponseDto를 초기화한다.
+            ResponseDto<TodoDto> response = ResponseDto.<TodoDto>builder().data(dtos).build();
+
+            // ResponseDto를 리턴한다.
+            return ResponseEntity.ok().body(response);
+        } catch(Exception e){
+            String error = e.getMessage();
+            ResponseDto<TodoDto> response = ResponseDto.<TodoDto>builder().error(error).build();
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 }
